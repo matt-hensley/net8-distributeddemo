@@ -1,0 +1,43 @@
+version: '3.4'
+
+services:
+  primary:
+    image: ${DOCKER_REGISTRY-}primary
+    build:
+      context: .
+      dockerfile: Primary/Dockerfile
+    depends_on:
+      - collector
+      - secondary
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+
+  secondary:
+    image: ${DOCKER_REGISTRY-}secondary
+    build:
+      context: .
+      dockerfile: Secondary/Dockerfile
+    depends_on:
+      - collector
+      - redis
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ --config=/etc/collector.yml ]
+    volumes:
+      - ./collector/collector.yml:/etc/collector.yml
+    env_file:
+      - ./collector/collector.env
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+      - "8888:8888" # Collector Prometheus port
+
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"

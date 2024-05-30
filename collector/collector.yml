@@ -1,0 +1,43 @@
+extensions:
+  basicauth/otlp:
+    client_auth:
+      username: ${env:INSTANCE_ID}
+      password: ${env:API_KEY}
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+exporters:
+  logging:
+    verbosity: detailed
+  otlphttp:
+    auth:
+      authenticator: basicauth/otlp
+    endpoint: https://otlp-gateway-${env:ZONE}.grafana.net/otlp
+
+service:
+  telemetry:
+    logs:
+      level: "debug"
+  extensions: [basicauth/otlp]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging,otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging,otlphttp]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging,otlphttp]
